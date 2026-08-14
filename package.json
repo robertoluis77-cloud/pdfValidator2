@@ -1,0 +1,26 @@
+{
+  "name": "pdf-qr-validator",
+  "version": "1.0.0",
+  "description": "Validación automatizada y recursiva de PDFs y códigos QR con crop por zonas",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "debug:zones": "ts-node src/utils/zoneDebugger.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@google/genai": "^2.17.1",
+    "glob": "^11.0.0",
+    "jimp": "^0.22.12",
+    "jsqr": "^1.4.0",
+    "pdf-parse": "^2.4.5",
+    "pdf-to-img": "^4.0.0",
+    "zod": "^3.23.0"
+  }
+}
