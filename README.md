@@ -76,18 +76,53 @@ npx playwright test src/tests/pdfQrValidationThis.spec.ts
 
 ### `compressPdfsThis.spec.ts` — Compresión de PDFs con Ghostscript
 
-**Qué hace:** Busca todos los PDFs en el directorio actual, los comprime con Ghostscript usando un perfil configurable y reemplaza los originales.
+**Qué hace:** Busca todos los PDFs en el directorio actual (recursivo), los comprime con Ghostscript usando un perfil configurable y reemplaza los originales. Adjunta un reporte JSON y log de texto a la salida de Playwright.
 
 **Variables de entorno:**
 
 | Variable | Valor por defecto | Descripción |
 |----------|-------------------|-------------|
-| `GS_PROFILE` | `'2'` | Perfil de compresión: `'2'` (máxima compresión + legible), `'3'` (200 DPI, bueno para escaneados), `'4'` (solo texto vectorial) |
+| `GS_PROFILE` | `'2'` | Perfil de compresión: `'2'` (máxima compresión + legible, recomendado), `'3'` (200 DPI, ideal para escaneados), `'4'` (solo texto vectorial) |
 
-**Ejecutar solo este test:**
+**Perfiles disponibles:**
+
+| Perfil | Enfoque | Uso recomendado |
+|--------|---------|-----------------|
+| `GS_PROFILE=2` (default) | JPEG controlado (QFactor alto), mantiene 150 DPI, no hace downsampling agresivo | Documentos mixtos (texto + imágenes), facturas, tickets |
+| `GS_PROFILE=3` | 200 DPI en color/gray/mono, downsampling Bicubic | PDFs escaneados (todo imagen), necesitás buena legibilidad |
+| `GS_PROFILE=4` | Sin tocar imágenes, comprime fuentes y elimina recursos | PDFs mayormente texto vectorial, archivos con muchas fuentes |
+
+**Detección de Ghostscript:**
+
+El test busca automáticamente `gs`, `gswin64c` o `gswin32c` en el PATH. En Windows también soporta WSL (`wsl gs`) si tenés Ghostscript instalado en Ubuntu/WSL.
+
+**Ejecutar:**
+
 ```bash
+# Perfil por defecto (2)
 npx playwright test src/tests/compressPdfsThis.spec.ts
+
+# Perfil para escaneados (3)
+GS_PROFILE=3 npx playwright test src/tests/compressPdfsThis.spec.ts
+
+# Perfil para texto vectorial (4)
+GS_PROFILE=4 npx playwright test src/tests/compressPdfsThis.spec.ts
 ```
+
+**Salida / Artefactos:**
+
+| Artefacto | Descripción |
+|-----------|-------------|
+| `gs-compress-report.json` | JSON con resumen por archivo (bytes originales, nuevos, reducción %, errores) |
+| `gs-compress-log.txt` | Log detallado de cada archivo procesado |
+| Consola | Muestra `humanKb(original) KB -> humanKb(new) KB (X% less)` por cada PDF |
+
+**Notas importantes:**
+
+- El test reemplaza los PDFs originales solo si la compresión es exitosa.
+- Usa un archivo temporal `.tmp_compressed_<timestamp>_<nombre>.pdf` en la misma carpeta y hace `renameSync` al final.
+- Timeout configurado en 2 minutos por archivo (`test.setTimeout(120000)`).
+- Si Ghostscript no se encuentra, el test se salta y adjunta un archivo `gs-diagnostics.txt` con detalles del PATH.
 
 ### `testHelpers.ts` — Helpers compartidos
 
