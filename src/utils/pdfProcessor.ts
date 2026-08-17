@@ -24,7 +24,7 @@ export async function convertPdfToImages(
   let pdfModule: any;
   try {
     // eslint-disable-next-line no-eval
-    pdfModule = await 'import("pdf-to-img")';
+    pdfModule = await eval('import("pdf-to-img")');
   } catch (err: any) {
     const errMsg = (err && (err.message || String(err))) || 'unknown error';
     const message = [
