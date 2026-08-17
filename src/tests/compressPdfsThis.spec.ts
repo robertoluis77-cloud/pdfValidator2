@@ -14,7 +14,7 @@ interface CompressReportEntry {
 
 
 
-test.describe('Compress PDFs with Ghostscript', async () => {
+test.describe('Compress PDFs with Ghostscript', () => {
 
     // No timeout for long-running compression
     test.setTimeout(1000 * 60 * 2); // 2'
@@ -200,11 +200,7 @@ test.describe('Compress PDFs with Ghostscript', async () => {
         return p.replace(/^([a-zA-Z]):[\\\/]/, (m, drive) => '/mnt/' + drive.toLowerCase() + '/').replace(/\\/g, '/');
     }
 
-
-
     const cwd = process.cwd();
-    const dir = path.join(cwd, 'src');
-
     const gsInfo = findGhostscript();
 
     if (!gsInfo) {
@@ -233,7 +229,7 @@ test.describe('Compress PDFs with Ghostscript', async () => {
         }
 
         // Attach diagnostics to Playwright report to help debugging PATH differences
-        await test.info().attach('gs-diagnostics.txt', {
+        test.info().attach('gs-diagnostics.txt', {
             body: diag.join('\n'),
             contentType: 'text/plain',
         });
@@ -244,7 +240,7 @@ test.describe('Compress PDFs with Ghostscript', async () => {
 
     const pdfFiles = scanPdfsSync(cwd);
 
-    expect(pdfFiles.length, `PDFs found under ${cwd}`).toBeGreaterThan(0);
+    //expect(pdfFiles.length, `PDFs found under ${cwd}`).toBeGreaterThan(0);
 
     const results: {
         total: number;
@@ -253,6 +249,10 @@ test.describe('Compress PDFs with Ghostscript', async () => {
         report: CompressReportEntry[];
         logs: string[]
     }[] = [];
+
+    test('Verify PDFs exist on ./pdfs folder', () => {
+        expect(pdfFiles.length, `PDFs found under ${cwd}`).toBeGreaterThan(0);
+    });
 
     for (const pdf of pdfFiles) {
         test(`Compress ${pdf.relativePath}`, async ({ }) => {

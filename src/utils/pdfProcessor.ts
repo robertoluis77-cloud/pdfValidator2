@@ -3,8 +3,6 @@ import * as fs from 'fs';
 export interface PdfPageImage {
   pageNumber: number;
   buffer: Buffer;
-  width: number;
-  height: number;
 }
 
 /**
@@ -26,7 +24,7 @@ export async function convertPdfToImages(
   let pdfModule: any;
   try {
     // eslint-disable-next-line no-eval
-    pdfModule = await eval('import("pdf-to-img")');
+    pdfModule = await 'import("pdf-to-img")';
   } catch (err: any) {
     const errMsg = (err && (err.message || String(err))) || 'unknown error';
     const message = [
@@ -56,9 +54,7 @@ export async function convertPdfToImages(
     // Pero lo hacemos lazy en qrValidator para no duplicar trabajo
     pages.push({
       pageNumber,
-      buffer: image,
-      width: 0,   // Se llena después si es necesario
-      height: 0,
+      buffer: image
     });
     pageNumber++;
   }

@@ -12,3 +12,7 @@ debug-zones/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Temp files
+.tmp_*
+*.tmp
