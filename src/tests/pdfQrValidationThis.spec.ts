@@ -77,7 +77,7 @@ interface QrReport {
 
 test.describe('Validación recursiva de PDFs y códigos QR (por zonas) ', () => {
   // Aumentar el timeout por defecto para pruebas en este archivo (ms)
-  test.setTimeout(120_000*2);
+  test.setTimeout(120_000 * 2);
   // Ensure folder exists and discover PDFs synchronously at module load so
   // the `for (const pdfFile of pdfFiles)` loop below registers tests per PDF.
   if (!fs.existsSync(PDFS_DIR)) {
@@ -111,7 +111,7 @@ test.describe('Validación recursiva de PDFs y códigos QR (por zonas) ', () => 
       // 1. Convertir PDF a imágenes (con guardia de timeout)
       const pages = await withTimeout(
         convertPdfToImages(pdfFile.absolutePath, { scale: 3 }),
-        60_000*4,
+        60_000 * 4,
         `convertPdfToImages timed out for ${pdfFile.relativePath}`
       );
 
@@ -156,18 +156,16 @@ test.describe('Validación recursiva de PDFs y códigos QR (por zonas) ', () => 
 
           // 3. Validar contenido del QR con Zod
           const validation = validateQrContent(qr.data, QR_VALIDATION_SCHEMA);
-          if (validation.valid) {
+
+          // Replace the entire if/else block (L159-170) with:
+          if (!validation.valid) {
+            console.error(`      ❌ Contenido inválido: ${validation.errors?.join(', ')}`);
+          }
           expect(
             validation.valid,
-            `QR en página ${page.pageNumber} tiene contenido válido: ${qr.data}`
+            `QR en página ${page.pageNumber} tiene contenido ${validation.valid ? 'válido' : 'inválido'}: ${validation.valid ? qr.data : validation.errors?.join(', ')}`
           ).toBe(true);
-          } else {
-            console.error(`      ❌ Contenido inválido: ${validation.errors?.join(', ')}`);
-            expect(
-              validation.valid,
-              `QR en página ${page.pageNumber} tiene contenido inválido: ${validation.errors?.join(', ')}`
-            ).toBe(false);
-          }
+
         } else {
           report.qrMissed++;
           console.log(`   ❌ Página ${page.pageNumber}: Sin QR detectado`);
