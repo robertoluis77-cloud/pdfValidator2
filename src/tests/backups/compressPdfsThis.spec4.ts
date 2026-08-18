@@ -12,7 +12,10 @@ interface CompressReportEntry {
     error?: string;
 }
 
-test.describe('Compress PDFs with Ghostscript', async () => {
+
+
+test.describe('Compress PDFs with Ghostscript', () => {
+
     // No timeout for long-running compression
     test.setTimeout(1000 * 60 * 2); // 2'
 
@@ -197,11 +200,7 @@ test.describe('Compress PDFs with Ghostscript', async () => {
         return p.replace(/^([a-zA-Z]):[\\\/]/, (m, drive) => '/mnt/' + drive.toLowerCase() + '/').replace(/\\/g, '/');
     }
 
-
-
     const cwd = process.cwd();
-    const dir = path.join(cwd, 'src');
-
     const gsInfo = findGhostscript();
 
     if (!gsInfo) {
@@ -230,7 +229,7 @@ test.describe('Compress PDFs with Ghostscript', async () => {
         }
 
         // Attach diagnostics to Playwright report to help debugging PATH differences
-        await test.info().attach('gs-diagnostics.txt', {
+        test.info().attach('gs-diagnostics.txt', {
             body: diag.join('\n'),
             contentType: 'text/plain',
         });
@@ -241,21 +240,29 @@ test.describe('Compress PDFs with Ghostscript', async () => {
 
     const pdfFiles = scanPdfsSync(cwd);
 
-    expect(pdfFiles.length, `PDFs found under ${cwd}`).toBeGreaterThan(0);
+    //expect(pdfFiles.length, `PDFs found under ${cwd}`).toBeGreaterThan(0);
 
-    const report: CompressReportEntry[] = [];
-    let total = 0;
-    let ok = 0;
-    let fail = 0;
+    const results: {
+        total: number;
+        ok: number;
+        fail: number;
+        report: CompressReportEntry[];
+        logs: string[]
+    }[] = [];
 
-    const logs: string[] = [];
-    logs.push(`Using Ghostscript: ${gsInfo.cmd} (isWsl: ${gsInfo.isWsl})`);
+    test('Verify PDFs exist on ./pdfs folder', () => {
+        expect(pdfFiles.length, `PDFs found under ${cwd}`).toBeGreaterThan(0);
+    });
 
     for (const pdf of pdfFiles) {
         test(`Compress ${pdf.relativePath}`, async ({ }) => {
-            total++;
+
+            const report: CompressReportEntry[] = [];
+            let ok = 0, fail = 0;
+
             const input = pdf.absolutePath;
-            logs.push(`Processing: ${input}`);
+            let logs: string[] = [`Processing: ${input}`];
+            logs.push(`Using Ghostscript: ${gsInfo.cmd} (isWsl: ${gsInfo.isWsl})`);
 
             let original = 0;
             try {
@@ -292,14 +299,21 @@ test.describe('Compress PDFs with Ghostscript', async () => {
                     // verify tmp exists
                     if (fs.existsSync(tmp)) {
                         const newSize = fs.statSync(tmp).size;
-                        // replace original
-                        fs.renameSync(tmp, input);
-                        const reduction = original > 0 ? Math.round(((original - newSize) * 100) / original) : 0;
-                        const msg = `  ✓ ${humanKb(original)} KB -> ${humanKb(newSize)} KB (${reduction}% less)`;
-                        logs.push(msg);
-                        console.log(`Processing: ${input}\n${msg}`);
-                        report.push({ file: input, originalBytes: original, newBytes: newSize, ok: true });
-                        ok++;
+                        if (newSize < original) {
+                            fs.renameSync(tmp, input);
+                            const reduction = original > 0 ? Math.round(((original - newSize) * 100) / original) : 0;
+                            const msg = `  ✓ ${humanKb(original)} KB -> ${humanKb(newSize)} KB (${reduction}% less)`;
+                            logs.push(msg);
+                            console.log(`Processing: ${input}\n${msg}`);
+                            report.push({ file: input, originalBytes: original, newBytes: newSize, ok: true });
+                            ok++;
+                        } else {
+                            fs.unlinkSync(tmp); // discard compressed, keep original
+                            const msg = `  ⚠ ${humanKb(original)} KB -> ${humanKb(newSize)} KB (NO reduction, original kept)`;
+                            logs.push(msg);
+                            console.log(`Processing: ${input}\n${msg}`);
+                            report.push({ file: input, originalBytes: original, newBytes: newSize, ok: true });
+                        }
                     } else {
                         const msg = '  ✗ Temporary file not created or empty';
                         logs.push(msg);
@@ -325,11 +339,13 @@ test.describe('Compress PDFs with Ghostscript', async () => {
                 fail++;
             }
 
-            const summary = { total, ok, fail, details: report };
+            //const summary = { total, ok, fail, details: report };
+
+            results.push({ total: 1, ok: ok, fail: fail, report: report, logs: logs });
 
             // Attach report and logs to Playwright report
             await test.info().attach('gs-compress-report.json', {
-                body: JSON.stringify(summary, null, 2),
+                body: JSON.stringify(results, null, 2),
                 contentType: 'application/json',
             });
 
@@ -342,6 +358,8 @@ test.describe('Compress PDFs with Ghostscript', async () => {
             expect(fail, `Checking if some PDFs failed to compress. See attached 'gs-compress-log.txt'`).toBe(0);
         });
     }
+
+
 
 
 });

@@ -2,9 +2,23 @@ import { test, expect } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawnSync } from 'child_process';
-import { scanPdfsSync } from '../utils/fileScanner';
+import { scanPdfsSync } from '../../utils/fileScanner';
+
+interface CompressReportEntry {
+    file: string;
+    originalBytes: number;
+    newBytes: number | null;
+    ok: boolean;
+    error?: string;
+}
 
 
+interface TotalReportEntry {
+    PDFTotals: number;
+    PDFTCompressed: number;
+    PDFSkipped: number;
+    PDFFailed: number;
+}
 
 
 test.describe('Compress PDFs with Ghostscript', () => {
@@ -233,40 +247,28 @@ test.describe('Compress PDFs with Ghostscript', () => {
 
     const pdfFiles = scanPdfsSync(cwd);
 
-    interface CompressReportEntry {
-        file: string;
-        originalBytes: number;
-        newBytes: number | null;
-        ok: boolean;
-        error?: string;
-    }
+    //expect(pdfFiles.length, `PDFs found under ${cwd}`).toBeGreaterThan(0);
 
-
-    const results: {
-        total: number;
-        ok: number;
-        fail: number;
-        skipped: number;
-        report: CompressReportEntry[];
-        logs: string[]
-    }[] = [];
-
-    let total = 0, ok = 0, skipped = 0, fail = 0;
+    // This array will collect the result from each individual test run.
+    const allTestResults: { report: CompressReportEntry, logs: string[] }[] = [];
 
     test('Verify PDFs exist on ./pdfs folder', () => {
-        expect(pdfFiles.length, `PDFs found under ${cwd}`).toBeGreaterThan(0);
+        expect(pdfFiles.length, `PDFs found under ${cwd}. Add some PDFs to test compression.`).toBeGreaterThan(0);
     });
 
     for (const pdf of pdfFiles) {
         test(`Compress ${pdf.relativePath}`, async ({ }) => {
 
             const report: CompressReportEntry[] = [];
-            total++;
-
-
+            //total++;
+            // Local counters for this specific test to avoid race conditions.
+            let ok = 0;
+            let skipped = 0;
+            let fail = 0;
             const input = pdf.absolutePath;
             let logs: string[] = [];
             logs.push(`Processing: ${input}`);
+            console.log(`Processing: ${input}`);
             logs.push(`Using Ghostscript: ${gsInfo.cmd} (isWsl: ${gsInfo.isWsl})`);
 
             let original = 0;
@@ -307,16 +309,16 @@ test.describe('Compress PDFs with Ghostscript', () => {
                         if (newSize < original) {
                             fs.renameSync(tmp, input);
                             const reduction = original > 0 ? Math.round(((original - newSize) * 100) / original) : 0;
-                            const msg = `  ✓ SUCCESS ${humanKb(original)} KB -> ${humanKb(newSize)} KB (${reduction}% less)`;
+                            const msg = `  ✓ ${humanKb(original)} KB -> ${humanKb(newSize)} KB (${reduction}% less)`;
                             logs.push(msg);
-                            console.log(`Processing: ${input}\n${msg}`);
+                            console.log(`  ✓ SUCCESS: ${path.basename(input)} | ${humanKb(original)} KB -> ${humanKb(newSize)} KB (${reduction}%)`);
                             report.push({ file: input, originalBytes: original, newBytes: newSize, ok: true });
                             ok++;
                         } else {
                             fs.unlinkSync(tmp); // discard compressed, keep original
-                            const msg = `  ⚠ SKIPPED ${humanKb(original)} KB -> ${humanKb(newSize)} KB (NO reduction, original kept)`;
+                            const msg = `  ⚠ ${humanKb(original)} KB -> ${humanKb(newSize)} KB (NO reduction, original kept)`;
                             logs.push(msg);
-                            console.log(`Processing: ${input}\n${msg}`);
+                            console.log(`  ⚠ SKIPPED: ${path.basename(input)} | No size reduction. Original kept.`);
                             report.push({ file: input, originalBytes: original, newBytes: newSize, ok: true });
                             skipped++;
                         }
@@ -345,13 +347,9 @@ test.describe('Compress PDFs with Ghostscript', () => {
                 fail++;
             }
 
-            results.push({ total: total, ok: ok, fail: fail, skipped: skipped, report: report, logs: logs });
-
-            // Attach report and logs to Playwright report
-            await test.info().attach('gs-compress-report.json', {
-                body: JSON.stringify(results, null, 2),
-                contentType: 'application/json',
-            });
+            // Collect the result of this test run.
+            // The report array will have 0 or 1 entries.
+            allTestResults.push({ report: report[0], logs });
 
             await test.info().attach('gs-compress-log.txt', {
                 body: logs.join('\n'),
@@ -363,7 +361,28 @@ test.describe('Compress PDFs with Ghostscript', () => {
         });
     }
 
+   /*  test.afterAll(async ({}, testInfo) => {
+        const total = allTestResults.length;
+        const compressed = allTestResults.filter(r => r.report.newBytes !== null && r.report.newBytes < r.report.originalBytes).length;
+        const skipped = allTestResults.filter(r => r.report.newBytes !== null && r.report.newBytes >= r.report.originalBytes).length;
+        const failed = allTestResults.filter(r => !r.report.ok).length;
 
+        const finalReport: TotalReportEntry = {
+            PDFTotals: total,
+            PDFTCompressed: compressed,
+            PDFSkipped: skipped,
+            PDFFailed: failed,
+        };
 
+        console.log('\n--- Compression Summary ---');
+        console.log(`Total PDFs Processed: ${total}`);
+        console.log(`Successfully Compressed: ${compressed}`);
+        console.log(`Skipped (no size reduction): ${skipped}`);
+        console.log(`Failed to Compress: ${failed}`);
+        console.log('---------------------------\n');
+
+        // Attach the single, final report after all tests are done.
+        await testInfo.attach('gs-compress-TotalReport.json', { body: JSON.stringify(finalReport, null, 2), contentType: 'application/json' });
+    }); */
 
 });
