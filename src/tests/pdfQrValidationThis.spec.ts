@@ -78,6 +78,7 @@ interface QrReport {
 test.describe('Validación recursiva de PDFs y códigos QR (por zonas) ', () => {
   // Aumentar el timeout por defecto para pruebas en este archivo (ms)
   test.setTimeout(120_000 * 2);
+  
   // Ensure folder exists and discover PDFs synchronously at module load so
   // the `for (const pdfFile of pdfFiles)` loop below registers tests per PDF.
   if (!fs.existsSync(PDFS_DIR)) {
