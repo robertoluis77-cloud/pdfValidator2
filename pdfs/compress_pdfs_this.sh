@@ -3,7 +3,7 @@
 # =============================================================================
 # compress_pdfs.sh
 # Comprime recursivamente todos los archivos PDF en el directorio actual
-# y sus subdirectorios usando Ghostscript con preset /ebook.
+# y sus subdirectorios usando Ghostscript.
 # =============================================================================
 
 set -euo pipefail
@@ -86,16 +86,21 @@ compress_pdf() {
     if "$GS_CMD" \
       -sDEVICE=pdfwrite \
       -dCompatibilityLevel=1.4 \
-      -dPDFSETTINGS=/ebook \
-      -dColorImageDownsampleType=/Bicubic \
-      -dColorImageResolution=120 \
-      -dGrayImageDownsampleType=/Bicubic \
-      -dGrayImageResolution=120 \
-      -dMonoImageDownsampleType=/Bicubic \
-      -dMonoImageResolution=120 \
       -dNOPAUSE \
       -dQUIET \
       -dBATCH \
+      -dDownsampleColorImages=true \
+      -dDownsampleGrayImages=true \
+      -dDownsampleMonoImages=false \
+      -dAutoFilterColorImages=true \
+      -dAutoFilterGrayImages=true \
+      -dColorImageFilter=/DCTEncode \
+      -dGrayImageFilter=/DCTEncode \
+      -dMonoImageFilter=/CCITTFaxEncode \
+      -dSubsetFonts=true \
+      -dCompressFonts=true \
+      -dDetectDuplicateImages=true \
+      -dCompressPages=true \
       -sOutputFile="$tmp_file" \
       "$input_file"; then
 
