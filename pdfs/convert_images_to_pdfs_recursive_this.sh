@@ -19,7 +19,7 @@ NC='\033[0m'
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Archivo de salida para registro
-OUTPUT_FILE="$DIR/images_to_pdf_log_$(date '+%Y-%m-%d %H:%M:%S').txt"
+OUTPUT_FILE="../test-results/shellScriptResults/images_to_pdf_log_$(date '+%Y-%m-%d %H-%M').txt"
 
 # Función para imprimir en consola (con color) y en log (sin color ANSI)
 log() {

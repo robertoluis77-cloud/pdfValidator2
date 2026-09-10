@@ -11,7 +11,7 @@
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Archivo de salida para guardar el listado de PDFs mayores a 1MB
-OUTPUT_FILE="$DIR/listado_PDFs_1M_fdfind_$(date '+%Y-%m-%d_%H-%M-%S').txt"
+OUTPUT_FILE="../shellScriptResults/listado_PDFs_1M_fdfind_$(date '+%Y-%m-%d_%H-%M-%S').txt"
 
 # Redirigir toda la salida a un archivo de log y a la consola
 exec > >(tee "$OUTPUT_FILE") 2>&1
@@ -51,7 +51,7 @@ if [ "$COUNT" -gt 0 ]; then
     echo "📄 PDFs encontrados:"
     # Usamos xargs para pasar la lista de archivos a 'ls' para un formato amigable
     # El uso de 'ls -lhS' ordena por tamaño (más grande primero)
-    echo "$PDF_LIST" | xargs -d '\n' ls -lhS --color=never | sed '/^total/d; s/^/   📁 /'
+    echo "$PDF_LIST" | xargs -d '\n' ls -hS --color=never | sed '/^total/d; s/^/   📁 /'
     echo ""
 else
     echo "📄 No se encontraron PDFs mayores a 1MB."

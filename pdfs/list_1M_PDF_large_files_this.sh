@@ -11,7 +11,7 @@
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Archivo de salida para guardar el listado de PDFs mayores a 1MB
-OUTPUT_FILE="$DIR/listado_PDFs_1M_$(date '+%Y-%m-%d %H:%M').txt"
+OUTPUT_FILE="../shellScriptResults/listado_PDFs_1M_$(date '+%Y-%m-%d %H-%M').txt"
 
 # Umbral de tamaño: 1MB en bytes (1 * 1024 * 1024 = 1048576)
 # En find se usa el criterio +1M para mayor a 1MB

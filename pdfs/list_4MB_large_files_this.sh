@@ -11,7 +11,7 @@
 DIR="$(pwd)"
 
 # Archivo de salida para guardar el listado de archivos mayores a 4MB
-OUTPUT_FILE="$DIR/archivos_4M_$(date '+%Y-%m-%d %H:%M').txt"
+OUTPUT_FILE="../shellScriptResults/archivos_4M_$(date '+%Y-%m-%d %H-%M').txt"
 
 # Crear el archivo de salida y redirigir toda la salida del script
 # hacia él, manteniendo además la impresión en consola.
@@ -35,7 +35,7 @@ COUNT=$(find "$DIR" \( -type f -size +4M -o -size 4M \) 2>/dev/null | wc -l)
 if [ "$COUNT" -gt 0 ]; then
     echo "📄 Archivos encontrados:"
     find "$DIR" \( -type f -size +4M -o -size 4M \) -print0 2>/dev/null | \
-        xargs -0 ls -alhS --color=never 2>/dev/null | \
+        xargs -0 ls -hS --color=never 2>/dev/null | \
         sed '/^total/d; s/^/   📁 /'
     echo ""
 fi
