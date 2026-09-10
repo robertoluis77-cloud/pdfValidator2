@@ -16,3 +16,7 @@ debug-zones/
 # Temp files
 .tmp_*
 *.tmp
+
+# pdfs
+
+/pdfs/*.pdf
