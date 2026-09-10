@@ -5,6 +5,7 @@ playwright-report/
 playwright/.cache/
 debug-zones/
 *.log
+*_log_*
 .DS_Store
 
 # Playwright
@@ -19,4 +20,5 @@ debug-zones/
 
 # pdfs
 
-/pdfs/*.pdf
+/pdfs/pdfs/
+*.pdf
