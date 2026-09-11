@@ -104,7 +104,7 @@ test.describe('Validación recursiva de PDFs y códigos QR (por zonas) ', () => 
   });
 
   for (const pdfFile of pdfFiles) {
-    test(` [${pdfFile.absolutePath}] PDF debe contener QR válidos`, async () => {
+    test(` [${pdfFile.absolutePath}] buscando QRs válidos`, async () => {
       // Log the full absolute path so it's visible in console and attached logs
       console.log(`\n📄 Procesando: ${pdfFile.absolutePath}`);
       console.log(`   Zonas a escanear: ${SCAN_REGIONS.map((r) => r.name).join(', ')}`);
@@ -113,7 +113,7 @@ test.describe('Validación recursiva de PDFs y códigos QR (por zonas) ', () => 
       const pages = await withTimeout(
         convertPdfToImages(pdfFile.absolutePath, { scale: 3 }),
         60_000 * 4,
-        `convertPdfToImages timed out for ${pdfFile.relativePath}`
+        `convertPdfToImages timed out for ${pdfFile.absolutePath}`
       );
 
       expect(
@@ -126,7 +126,7 @@ test.describe('Validación recursiva de PDFs y códigos QR (por zonas) ', () => 
       let qrFoundInPdf = false;
 
       const report: QrReport = {
-        pdf: pdfFile.relativePath,
+        pdf: pdfFile.absolutePath,
         totalPages: pages.length,
         qrDetected: 0,
         qrMissed: 0,
@@ -169,7 +169,7 @@ test.describe('Validación recursiva de PDFs y códigos QR (por zonas) ', () => 
 
         } else {
           report.qrMissed++;
-          console.log(`   ❌ Página ${page.pageNumber}: Sin QR detectado`);
+          console.log(`   🚨 Página ${page.pageNumber}: Sin QR detectado`);
 
           if (EXPECTED_QR_PER_PAGE) {
             expect(

@@ -22,4 +22,14 @@ debug-zones/
 
 /pdfs/pdfs/
 *.pdf
-archivos*.txt
+*.txt
+pdfs/pdfsComprimidos/1 DEST. FL. ALDANA REYES.xlsx
+pdfs/pdfsComprimidos/1 PROCEDIMIENTO PARA CALCULAR EL COSTO.docx
+pdfs/pdfsComprimidos/correo_original.eml
+pdfs/pdfsComprimidos/resumen.txt
+pdfs/pdfsComprimidos/solicitud_cartaporte_pimo_tr0040_guia_4175_67788_863305.csv
+pdfs/pdfsComprimidos/solicitud_cartaporte_pimo_tr0040_guia_4176_55630_181675.csv
+pdfs/pdfsComprimidos/solicitud_cartaporte_pimo_tr0040_guia_4206_59048_692465.csv
+pdfs/pdfsComprimidos/solicitud_cartaporte_pimo_tr1647_guia_2624_56555_815705.csv
+pdfs/pdfsComprimidos/solicitud_cartaporte_pimo_tr1716_guia_5923_41975_697579.csv
+pdfs/pdfsComprimidos/solicitud_cartaporte_pimo_tr1716_guia_5967_58108_132607.csv

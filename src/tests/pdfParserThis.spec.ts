@@ -24,7 +24,7 @@ const PDF_PATTERN = path.join(PDFS_DIR, '**/*.pdf').replace(/\\/g, '/');
 // ──────────────────────────────────────────────────────────────────────────────
 // Directorio y timestamp para los archivos de resultados
 // ──────────────────────────────────────────────────────────────────────────────
-const RESULTS_DIR = path.resolve(process.cwd(), './test-results/pdfParserResults');
+const RESULTS_DIR = path.resolve(process.cwd(), './shellScriptResults/pdfParserResults');
 
 /** Genera un timestamp en formato YYYYMMDD_HHmmss */
 function buildTimestamp() {
@@ -55,7 +55,7 @@ async function findPdfFiles() {
  * Crea el directorio de destino si no existe.
  * Los errores de escritura se loguean pero NO rompen la ejecución.
  */
-function escribirArchivoResultados(rutaArchivo, lineas) {
+function escribirArchivoResultados(rutaArchivo: string, lineas: string[]) {
   try {
     fs.mkdirSync(path.dirname(rutaArchivo), { recursive: true });
     fs.writeFileSync(rutaArchivo, lineas.join('\n') + '\n', 'utf-8');
@@ -68,8 +68,9 @@ function escribirArchivoResultados(rutaArchivo, lineas) {
 // ──────────────────────────────────────────────────────────────────────────────
 // Colecciones compartidas entre tests para el resumen final
 // ──────────────────────────────────────────────────────────────────────────────
-const pdfsExitosos = [];
-const pdfsConError = [];
+const pdfText: string[] = [];
+const pdfImagen: string[] = [];
+const pdfParserError: string[] = [];
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Suite principal
@@ -100,7 +101,7 @@ test.describe('Validación de PDFs que sean legibles y parseables', () => {
     const info = test.info();
 
     for (const pdfFile of pdfFiles) {
-      const nombreBase = path.basename(pdfFile);
+      const nombreBase = path.relative(PDFS_DIR, pdfFile);
       console.log(`\n── Procesando: ${nombreBase} ──`);
 
       // ── Parseo del PDF ────────────────────────────────────────────────────
@@ -121,7 +122,7 @@ test.describe('Validación de PDFs que sean legibles y parseables', () => {
       } catch (err) {
         // Registrar el fallo y continuar con el siguiente PDF
         console.error(`  ✗ Error al parsear: ${nombreBase} →`, err);
-        pdfsConError.push(nombreBase);
+        pdfParserError.push(nombreBase);
         continue;
       }
 
@@ -166,11 +167,11 @@ test.describe('Validación de PDFs que sean legibles y parseables', () => {
       // PDFs escaneados sin OCR pueden tener muy poco texto; se registran como fallidos
       // pero NO se lanza un error para que el test continúe con los demás archivos.
       if (textoCompleto.length > 50) {
-        console.log(`\n  ✓ PDF válido: ${nombreBase} (${textoCompleto.length} chars)`);
-        pdfsExitosos.push(nombreBase);
+        console.log(`\n  ✓ PDF con Texto: ${nombreBase} (${textoCompleto.length} chars)`);
+        pdfText.push(nombreBase);
       } else {
-        console.warn(`\n  ⚠ PDF sin texto suficiente: ${nombreBase} (${textoCompleto.length} chars, umbral: 50)`);
-        pdfsConError.push(`${nombreBase} [texto insuficiente: ${textoCompleto.length} chars]`);
+        console.warn(`\n  ✓ PDF con Imagen: ${nombreBase} (${textoCompleto.length} chars, umbral: 50)`);
+        pdfImagen.push(`${nombreBase} [texto insuficiente: ${textoCompleto.length} chars]`);
       }
     }
   });
@@ -181,13 +182,16 @@ test.describe('Validación de PDFs que sean legibles y parseables', () => {
   test.afterAll(() => {
     const ts = buildTimestamp();
 
-    const rutaPassed = path.join(RESULTS_DIR, `passed_${ts}.txt`);
-    const rutaFailed = path.join(RESULTS_DIR, `failed_${ts}.txt`);
+    const rutaPassed = path.join(RESULTS_DIR, `textPDFs_${ts}.txt`);
+    const rutaFailed = path.join(RESULTS_DIR, `imagePDFs_${ts}.txt`);
+    const rutaError = path.join(RESULTS_DIR, `errorPDFs_${ts}.txt`);
 
-    console.log(`\n[Resultados] PDFs exitosos : ${pdfsExitosos.length}`);
-    console.log(`[Resultados] PDFs con error: ${pdfsConError.length}`);
+    console.log(`\n[Resultados] Text PDFs : ${pdfText.length}`);
+    console.log(`[Resultados] Image : ${pdfImagen.length}`);
+    console.log(`[Resultados] Parser Error : ${pdfParserError.length}`);
 
-    escribirArchivoResultados(rutaPassed, pdfsExitosos.length > 0 ? pdfsExitosos : ['(ninguno)']);
-    escribirArchivoResultados(rutaFailed, pdfsConError.length > 0 ? pdfsConError : ['(ninguno)']);
+    escribirArchivoResultados(rutaPassed, pdfText.length > 0 ? pdfText : ['(ninguno)']);
+    escribirArchivoResultados(rutaFailed, pdfImagen.length > 0 ? pdfImagen : ['(ninguno)']);
+    escribirArchivoResultados(rutaError, pdfParserError.length > 0 ? pdfParserError : ['(ninguno)']);
   });
 });
