@@ -75,6 +75,7 @@ test.describe('Compress PDFs with Ghostscript', () => {
             // Select Ghostscript profile via env GS_PROFILE ('2'|'12'|'3'|'4', default '2')
             const profileKey = process.env.GS_PROFILE ?? '2';
             const profileArgs = GS_PROFILES[profileKey] ?? GS_PROFILES['2'];
+            console.log('GS Profile used: ',profileKey);
 
             const report: CompressReportEntry[] = [];
             let failed = false;

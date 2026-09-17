@@ -6,6 +6,7 @@ playwright/.cache/
 debug-zones/
 *.log
 *_log_*
+.env
 .DS_Store
 
 # Playwright

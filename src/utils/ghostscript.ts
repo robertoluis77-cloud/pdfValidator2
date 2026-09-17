@@ -145,6 +145,7 @@ export const GS_PROFILES: Record<string, string[]> = {
         '-dCompressFonts=true',
         '-dDetectDuplicateImages=true',
         '-dCompressPages=true',
+        '-dEmbedAllFonts=true'
     ],
     '12': [
         '-sDEVICE=pdfwrite',
@@ -192,17 +193,24 @@ export const GS_PROFILES: Record<string, string[]> = {
     '4': [
         '-sDEVICE=pdfwrite',
         '-dCompatibilityLevel=1.4',
-        '-dPDFSETTINGS=/ebook',
         '-dNOPAUSE',
         '-dQUIET',
         '-dBATCH',
+        '-dUCRandBGInfo=/Remove',
         '-dSubsetFonts=true',
         '-dCompressFonts=true',
         '-dDetectDuplicateImages=true',
         '-dRemoveUnusedResources=true',
         '-dPreserveHalftoneInfo=false',
         '-dPreserveOverprintSettings=false',
-        '-dUCRandBGInfo=/Remove',
+        '-dEmbedAllFonts=true',
+        '-dCompressPages=true',
+        '-dDownsampleColorImages=true',
+        '-dColorImageResolution=170',
+        //'-dColorImageDownsampleType=/Bicubic',
+        '-dDownsampleGrayImages=true',
+        '-dGrayImageDownsampleType=/Bicubic',
+        '-dDownsampleMonoImages=false',
     ],
 };
 
