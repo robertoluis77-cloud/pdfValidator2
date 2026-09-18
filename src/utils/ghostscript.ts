@@ -209,6 +209,7 @@ export const GS_PROFILES: Record<string, string[]> = {
         '-dColorImageResolution=170',
         //'-dColorImageDownsampleType=/Bicubic',
         '-dDownsampleGrayImages=true',
+        //'-dGrayImageResolution=150',
         '-dGrayImageDownsampleType=/Bicubic',
         '-dDownsampleMonoImages=false',
     ],
