@@ -2,6 +2,8 @@
 // Tareas:
 //   1. Adjuntar métricas de parsing (numpages, numrender, info, text) al reporte y consola.
 //   2. Generar archivos passed_<timestamp>.txt y failed_<timestamp>.txt al finalizar.
+//   3. Buscar la frase "estado de cuenta" (case-insensitive) en cada PDF y generar
+//      estadosDeCuentaPDFs_<timestamp>.txt con las rutas de los PDFs identificados.
 
 const { test, expect } = require('@playwright/test');
 const { startConsoleCapture, restoreConsoleCapture } = require('./testHelpers');
@@ -71,6 +73,10 @@ function escribirArchivoResultados(rutaArchivo: string, lineas: string[]) {
 const pdfText: string[] = [];
 const pdfImagen: string[] = [];
 const pdfParserError: string[] = [];
+const pdfEstadosDeCuenta: string[] = [];
+
+// Frase a buscar (case-insensitive) durante el parsing de los PDFs
+const FRASE_BUSCADA = 'estado de cuenta';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Suite principal
@@ -162,6 +168,14 @@ test.describe('Validación de PDFs que sean legibles y parseables', () => {
         contentType: 'text/plain',
       });
 
+      // ── Tarea 3: búsqueda de la frase "estado de cuenta" (case-insensitive) ─
+      const textoNormalizado = textoCompleto.toLowerCase();
+      if (textoNormalizado.includes(FRASE_BUSCADA)) {
+        console.log(`  🔍 Frase "${FRASE_BUSCADA}" encontrada (case-insensitive): ${nombreBase}`);
+        const rutaDesdePdfs = './pdfs/' + path.relative(path.resolve(process.cwd(), './pdfs'), pdfFile).replace(/\\/g, '/');
+        pdfEstadosDeCuenta.push(rutaDesdePdfs);
+      }
+
       // ── Verificación de legibilidad ───────────────────────────────────────
       // Si el texto extraído tiene más de 50 caracteres, el PDF es válido.
       // PDFs escaneados sin OCR pueden tener muy poco texto; se registran como fallidos
@@ -193,5 +207,21 @@ test.describe('Validación de PDFs que sean legibles y parseables', () => {
     escribirArchivoResultados(rutaPassed, pdfText.length > 0 ? pdfText : ['(ninguno)']);
     escribirArchivoResultados(rutaFailed, pdfImagen.length > 0 ? pdfImagen : ['(ninguno)']);
     escribirArchivoResultados(rutaError, pdfParserError.length > 0 ? pdfParserError : ['(ninguno)']);
+
+    // Archivo de estados de cuenta con formato específico
+    const rutaEstados = path.join(RESULTS_DIR, `estadosDeCuentaPDFs_${ts}.txt`);
+    const lineasEstados: string[] = [
+      '========================================',
+      '🔍 Buscando archivos PDF que sean Estados de Cuentas de bancos',
+      '========================================',
+      '',
+      '📄 Archivos PDF encontrados con estados de cuentas (rutas desde ./pdfs):',
+      ...pdfEstadosDeCuenta.map((ruta) => `   📁 ${ruta}`),
+    ];
+    if (pdfEstadosDeCuenta.length === 0) {
+      lineasEstados.push('   (ninguno)');
+    }
+    console.log(`\n[Resultados] Estados de Cuenta : ${pdfEstadosDeCuenta.length}`);
+    escribirArchivoResultados(rutaEstados, lineasEstados);
   });
 });

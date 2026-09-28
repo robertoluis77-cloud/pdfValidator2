@@ -8,6 +8,7 @@ debug-zones/
 *_log_*
 .env
 .DS_Store
+.kilo/
 
 # Playwright
 /playwright-report/
