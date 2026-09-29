@@ -127,6 +127,53 @@ export function collectGsDiagnostics(): string {
  * Profile 4  – vector/text PDFs: /ebook + font optimisation only
  */
 export const GS_PROFILES: Record<string, string[]> = {
+    '1': [
+        '-sDEVICE=pdfwrite',
+        '-dCompatibilityLevel=1.4',
+        '-dNOPAUSE',
+        '-dQUIET',
+        '-dBATCH',
+        //'-dPDFSETTINGS=/ebook'
+        //'-dPDFSETTINGS=/printer'
+        //'-dPDFSETTINGS=/prepress',
+        //'-dPDFSETTINGS=/screen',
+        '-dDetectDuplicateImages=true',
+        '-dDownsampleColorImages=true',
+        '-dDownsampleGrayImages=true',
+        '-dDownsampleMonoImages=true',
+        '-dColorImageResolution=100',
+        '-dGrayImageResolution=250',
+        '-dMonoImageResolution=250',
+        '-dColorImageDownsampleType=/Average',
+        '-dGrayImageDownsampleType=/Bicubic',
+        '-dMonoImageDownsampleType=/Bicubic',
+        '-dAutoFilterColorImages=false',
+        '-dAutoFilterGrayImages=false',
+        '-dColorImageFilter=/DCTEncode',
+        '-dGrayImageFilter=/DCTEncode',
+        '-dOmitInfo=true',
+        '-dOmitdata=true',
+        '-dJPEGQ=100',
+        '-dUCRandBGInfo=/Remove',
+        '-dSubsetFonts=true',
+        '-dCompressFonts=true',
+        '-dDetectDuplicateImages=true',
+        '-dRemoveUnusedResources=true',
+        '-dEmbedAllFonts=true',
+        '-dCompressPages=true',
+    ],
+    '11': [
+        '-sDEVICE=pdfwrite',
+        '-dCompatibilityLevel=1.4',
+        '-dNOPAUSE',
+        '-dQUIET',
+        '-dBATCH',
+        //'-dPDFSETTINGS=/ebook',
+        //'-dPDFSETTINGS=/printer'
+        //'-dPDFSETTINGS=/prepress',
+        '-dPDFSETTINGS=/default',
+        //'-dPDFSETTINGS=/screen'
+    ],
     '2': [
         '-sDEVICE=pdfwrite',
         '-dCompatibilityLevel=1.4',
