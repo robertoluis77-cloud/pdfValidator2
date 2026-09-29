@@ -9,6 +9,10 @@ debug-zones/
 .env
 .DS_Store
 .kilo/
+*.csv
+*.eml
+*.xlsx
+*.docx
 
 # Playwright
 /playwright-report/
