@@ -1,0 +1,23 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Caches de Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Artefactos de empaquetado del propio proyecto
+build/
+dist/
+*.egg-info/
+
+# Salidas generadas por los scripts
+output.txt
+Total Origen-*.txt
+*.zip
+*.rar

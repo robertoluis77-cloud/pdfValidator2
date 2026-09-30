@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compression-winrar"
+version = "1.0.0"
+description = "Empacado por lotes de archivos en ZIP mediante WinRAR con limites de tamaño configurables (4 MB y 19 MB)"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+authors = [
+    { name = "Equipo de desarrollo (jprieto/jmanzo)" },
+]
+keywords = ["winrar", "zip", "empacado", "lotes", "compresion", "windows"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Archiving :: Compression",
+]
+
+# Tras la unificación y limpieza del código, las dependencias de terceros
+# PyPDF2 y pdfminer.six ya no son necesarias porque la validación de PDF
+# (código muerto) fue eliminada. Las únicas dependencias reales serían
+# para desarrollo/testing, declaradas en [project.optional-dependencies].
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+    "black>=24.0",
+]
+
+# Los scripts de ./src/ son programas ejecutables (no paquetes importables:
+# su codigo de nivel de modulo se ejecuta al importarse). La distribucion se
+# declara vacia para que `pip install -e .` instale unicamente las
+# dependencias declaradas arriba.
+[tool.setuptools]
+packages = []
+py-modules = []
