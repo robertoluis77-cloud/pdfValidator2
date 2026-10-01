@@ -463,6 +463,12 @@ def main(argv: list[str] | None = None) -> int:
         help="carpeta de trabajo con las subcarpetas a empacar (sobrescribe .)",
     )
     parser.add_argument(
+        "--nivel_compresion",
+        type=int,
+        default=None,
+        help="nivel de compresión de WinRAR 0-5 (sobrescribe el valor por defecto: 3)",
+    )
+    parser.add_argument(
         "--max-files",
         type=int,
         default=None,
@@ -485,6 +491,8 @@ def main(argv: list[str] | None = None) -> int:
         cfg = replace(cfg, wrkdir=args.dir)
     if args.max_files is not None:
         cfg = replace(cfg, max_files_per_iteration=args.max_files)
+    if args.nivel_compresion is not None:
+        cfg = replace(cfg, nivel_compresion=args.nivel_compresion)
 
     # Configurar logging
     log = configurar_logging(cfg)
