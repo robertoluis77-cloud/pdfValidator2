@@ -15,13 +15,16 @@ import pytest
 import compresor
 from compresor import (
     PERFILES,
+    Agrupacion,
     Config,
     agrupar_por_tamano,
+    destino_listado,
     descubrir_archivos,
     empacar_grupos,
     escribir_output,
     ruta_segura,
     validar_tamanos,
+    zip_files_with_winrar,
 )
 
 
@@ -209,15 +212,96 @@ class TestEmpacarGrupos:
 
 
 class TestEscribirOutput:
-    def test_formato_ruta_grupo_tamano(self, tmp_path, cfg):
+    def test_formato_ruta_grupo_tamano(self, tmp_path, cfg, log):
         crear_archivos(tmp_path, {"a.txt": 100})
         archivos = descubrir_archivos(tmp_path)
-        grupos = [[a for a in archivos]]
+        agrupacion = Agrupacion(grupos=[list(archivos)], tamanos=[100], empaquetados={0})
 
-        escribir_output(grupos, archivos, cfg)
+        escribir_output([(tmp_path, agrupacion, archivos)], cfg, log)
 
         lineas = (tmp_path / "output.txt").read_text(encoding="utf-8").strip().splitlines()
-        assert lineas == [f"{grupos[0][0]}|0|100"]
+        assert lineas == [f"{list(archivos)[0]}|0|100"]
+
+    def test_agrega_todas_las_carpetas(self, tmp_path, cfg, log):
+        c1, c2 = tmp_path / "c1", tmp_path / "c2"
+        crear_archivos(tmp_path, {"c1/a.txt": 100, "c2/b.txt": 200, "c2/c.txt": 300})
+        archivos_c1 = descubrir_archivos(c1)
+        archivos_c2 = descubrir_archivos(c2)
+        agr1 = Agrupacion(grupos=[list(archivos_c1)], tamanos=[100], empaquetados={0})
+        agr2 = Agrupacion(grupos=[list(archivos_c2)], tamanos=[500], empaquetados={0})
+
+        escribir_output([(c1, agr1, archivos_c1), (c2, agr2, archivos_c2)], cfg, log)
+
+        lineas = (tmp_path / "output.txt").read_text(encoding="utf-8").strip().splitlines()
+        assert len(lineas) == 3  # ambas carpetas quedan en el mismo archivo
+        assert f"{c1 / 'a.txt'}|0|100" in lineas
+        assert f"{c2 / 'b.txt'}|0|200" in lineas
+        assert f"{c2 / 'c.txt'}|0|300" in lineas
+
+    def test_indices_de_grupo_por_carpeta(self, tmp_path, cfg, log):
+        crear_archivos(tmp_path, {"c1/a.txt": 100, "c2/b.txt": 200})
+        archivos_c1 = descubrir_archivos(tmp_path / "c1")
+        archivos_c2 = descubrir_archivos(tmp_path / "c2")
+        a1, b1 = list(archivos_c1)[0], list(archivos_c2)[0]
+        # Cada carpeta con dos grupos: los índices reinician por carpeta
+        agr1 = Agrupacion(grupos=[[a1], []], tamanos=[100, 0], empaquetados={0})
+        agr2 = Agrupacion(grupos=[[b1], []], tamanos=[200, 0], empaquetados={0})
+
+        escribir_output(
+            [(tmp_path / "c1", agr1, archivos_c1), (tmp_path / "c2", agr2, archivos_c2)],
+            cfg, log,
+        )
+
+        lineas = (tmp_path / "output.txt").read_text(encoding="utf-8").strip().splitlines()
+        assert f"{a1}|0|100" in lineas
+        assert f"{b1}|0|200" in lineas  # no "|1|": índices por carpeta, como los ZIP
+
+
+class TestManejoAcceso:
+    def test_winrar_no_ejecutable_lanza_systemexit(self, tmp_path, cfg, log, monkeypatch):
+        def lanzar_error(comando, **kwargs):
+            raise PermissionError(5, "Acceso denegado")
+
+        monkeypatch.setattr(compresor.subprocess, "run", lanzar_error)
+        with pytest.raises(SystemExit, match="No se pudo ejecutar WinRAR"):
+            zip_files_with_winrar([tmp_path / "a.txt"], tmp_path / "x.zip", cfg, log)
+
+    def test_zip_ausente_tras_empacar_lanza_systemexit(self, tmp_path, cfg, log, monkeypatch):
+        def no_hace_nada(comando, **kwargs):
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+        monkeypatch.setattr(compresor.subprocess, "run", no_hace_nada)
+        with pytest.raises(SystemExit, match="no fue creado o no es accesible"):
+            empacar_grupos([[tmp_path / "a.txt"]], [10], set(), tmp_path / "carpeta", cfg, log)
+
+    def test_destino_listado_preferida_ok(self, tmp_path, cfg, log):
+        destino = destino_listado(tmp_path / "listado.txt", cfg, log, "prueba")
+        assert destino == tmp_path / "listado.txt"
+
+    def test_destino_listado_fallback_a_log_dir(self, tmp_path, cfg, log):
+        (tmp_path / "listado.txt").mkdir()  # un directorio hace fallar open 'w'
+        destino = destino_listado(tmp_path / "listado.txt", cfg, log, "prueba")
+        assert destino == cfg.log_dir / "listado.txt"
+        assert (cfg.log_dir / "listado.txt").exists()
+
+    def test_destino_listado_ambos_fallan_devuelve_none(self, tmp_path, cfg, log):
+        (tmp_path / "listado.txt").mkdir()
+        (cfg.log_dir / "listado.txt").mkdir(parents=True)  # directorio: open 'w' falla
+        destino = destino_listado(tmp_path / "listado.txt", cfg, log, "prueba")
+        assert destino is None
+
+    def test_output_con_carpeta_protegida_cae_a_log_dir(self, tmp_path, cfg, log):
+        crear_archivos(tmp_path, {"a.txt": 100})
+        archivos = descubrir_archivos(tmp_path)
+        agrupacion = Agrupacion(grupos=[list(archivos)], tamanos=[100], empaquetados={0})
+        (tmp_path / "output.txt").mkdir()  # bloquea la escritura en la carpeta de datos
+
+        escribir_output([(tmp_path, agrupacion, archivos)], cfg, log)
+
+        redirigido = cfg.log_dir / "output.txt"
+        assert redirigido.exists()
+        lineas = redirigido.read_text(encoding="utf-8").strip().splitlines()
+        assert lineas == [f"{list(archivos)[0]}|0|100"]
 
 
 class TestConfig:

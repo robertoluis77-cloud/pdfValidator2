@@ -17,7 +17,6 @@ dist/
 *.egg-info/
 
 # Salidas generadas por los scripts
-output.txt
-Total Origen-*.txt
+*.txt
 *.zip
 *.rar

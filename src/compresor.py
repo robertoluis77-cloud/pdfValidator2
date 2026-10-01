@@ -39,8 +39,8 @@ class Config:
     nivel_compresion: int = 3
     num_hilos: int = 4
     timeout_segundos: int = 600
-    winrar_ruta: Path = Path(r"C:\winrar_ejecutable\WinRAR.exe")
-    log_dir: Path = Path(r"c:\SAT_logs")
+    winrar_ruta: Path = Path(r"C:\Program Files\WinRAR\WinRAR.exe")
+    log_dir: Path = Path(r"C:\Compression_WinRAR_logs")
     wrkdir: Path = Path(".")
 
 
@@ -288,7 +288,12 @@ def empacar_grupos(
             zip_files_with_winrar(lote, ruta_salida, cfg, log)
 
         # Actualizar tamaño del grupo con el tamaño real del ZIP creado
-        tamanos[idx] = tamano_archivo(ruta_salida)
+        try:
+            tamanos[idx] = tamano_archivo(ruta_salida)
+        except OSError as error:
+            raise SystemExit(
+                f"El ZIP {ruta_salida} no fue creado o no es accesible tras el empacado: {error}"
+            ) from error
         empaquetados.add(idx)
 
 
@@ -324,6 +329,10 @@ def zip_files_with_winrar(
         raise SystemExit(
             f"WinRAR excedió el timeout ({cfg.timeout_segundos}s) al empacar {ruta_salida}: {error}"
         ) from error
+    except OSError as error:
+        raise SystemExit(
+            f"No se pudo ejecutar WinRAR ({cfg.winrar_ruta}) para empacar {ruta_salida}: {error}"
+        ) from error
 
     if resultado.returncode != 0:
         error_msg = (
@@ -334,20 +343,65 @@ def zip_files_with_winrar(
         raise SystemExit(error_msg)
 
 
-def escribir_output(
-    grupos: list[list[Path]],
-    archivos: dict[Path, int],
+def destino_listado(
+    preferida: Path,
     cfg: Config,
+    log: logging.Logger,
+    etiqueta: str,
+) -> Path | None:
+    """
+    Resuelve dónde escribir un listado (Total Origen u output.txt).
+    Si la carpeta de datos no permite escritura, usa la carpeta de logs;
+    si tampoco, omite el listado sin abortar el empacado.
+    """
+    try:
+        with open(preferida, "w", encoding="utf-8"):
+            pass
+        return preferida
+    except OSError as error:
+        log.warning(
+            "%s: no se pudo escribir en %s (%s); se intentará en la carpeta de logs",
+            etiqueta,
+            preferida,
+            error,
+        )
+    alternativa = cfg.log_dir / preferida.name
+    try:
+        os.makedirs(cfg.log_dir, exist_ok=True)
+        with open(alternativa, "w", encoding="utf-8"):
+            pass
+        log.info("%s: listado redirigido a %s", etiqueta, alternativa)
+        return alternativa
+    except OSError as error:
+        log.warning(
+            "%s: tampoco se pudo escribir en %s (%s); el listado se omite",
+            etiqueta,
+            alternativa,
+            error,
+        )
+        return None
+
+
+def escribir_output(
+    carpetas_procesadas: list[tuple[Path, Agrupacion, dict[Path, int]]],
+    cfg: Config,
+    log: logging.Logger,
 ) -> None:
     """
-    Escribe el archivo output.txt con formato: ruta|grupo|tamaño.
-    Sobrescribe el archivo existente (modo 'w').
+    Escribe el archivo output.txt con formato: ruta|grupo|tamaño, agregando los
+    archivos de TODAS las carpetas procesadas en un solo archivo (modo 'w').
+    Los índices de grupo son por carpeta, consistentes con los nombres de ZIP
+    (<carpeta>-NNNN.zip). Cae a la carpeta de logs si la carpeta de datos está
+    protegida contra escritura.
     """
-    ruta = cfg.wrkdir / "output.txt"
-    with open(ruta, "w", encoding="utf-8") as salida:
-        for idx, grupo in enumerate(grupos):
-            for archivo in grupo:
-                salida.write(f"{archivo}|{idx}|{archivos[archivo]}\n")
+    destino = destino_listado(cfg.wrkdir / "output.txt", cfg, log, "output.txt")
+    if destino is None:
+        return
+    with open(destino, "w", encoding="utf-8") as salida:
+        for carpeta, agrupacion, archivos in carpetas_procesadas:
+            for idx, grupo in enumerate(agrupacion.grupos):
+                for archivo in grupo:
+                    salida.write(f"{archivo}|{idx}|{archivos[archivo]}\n")
 
 
 def configurar_logging(cfg: Config) -> logging.Logger:
@@ -467,32 +521,40 @@ def main(argv: list[str] | None = None) -> int:
     )
     log.info("_" * 92)
 
-    # Abrir Total Origen-<fecha>.txt una sola vez para escritura (modo 'w')
-    total_origen_path = cfg.wrkdir / f"Total Origen-{hoy}.txt"
+    # Abrir Total Origen-<fecha>.txt una sola vez para escritura (modo 'w');
+    # si la carpeta de datos está protegida, el listado cae a la carpeta de logs
+    total_origen = destino_listado(
+        cfg.wrkdir / f"Total Origen-{hoy}.txt", cfg, log, "Total Origen"
+    )
+    origen = open(total_origen, "w", encoding="utf-8") if total_origen else None
+
+    resumen = []
+    carpetas_procesadas = []
     try:
-        with open(total_origen_path, "w", encoding="utf-8") as origen:
-            resumen = []
-            for carpeta in carpetas:
-                try:
-                    cifras = procesar_carpeta(
-                        carpeta,
-                        cfg,
-                        log,
-                        origen,
-                        dry_run=args.dry_run,
-                    )
-                    resumen.append((carpeta.name, cifras))
-                except SystemExit as e:
-                    # Propagar errores fatales (archivo demasiado grande, etc.)
-                    log.error("Error procesando carpeta %s: %s", carpeta.name, e)
-                    return 1
-    except OSError as error:
-        log.error(
-            "No se pudo crear o escribir el archivo de origen %s: %s",
-            total_origen_path,
-            error,
-        )
-        return 1
+        for carpeta in carpetas:
+            try:
+                cifras, agrupacion, archivos = procesar_carpeta(
+                    carpeta,
+                    cfg,
+                    log,
+                    origen,
+                    dry_run=args.dry_run,
+                )
+                resumen.append((carpeta.name, cifras))
+                carpetas_procesadas.append((carpeta, agrupacion, archivos))
+            except SystemExit as e:
+                # Error fatal de la carpeta (límite excedido, WinRAR, etc.)
+                log.error("Error procesando carpeta %s: %s", carpeta.name, e)
+                return 1
+    finally:
+        # Escribir output.txt agregando TODAS las carpetas procesadas, una sola
+        # vez (queda el listado incluso si el proceso abortó a mitad de camino)
+        try:
+            escribir_output(carpetas_procesadas, cfg, log)
+        except OSError as error:
+            log.error("No se pudo escribir output.txt: %s", error)
+        if origen is not None:
+            origen.close()
 
     # Reporte final resumido
     for nombre, cifras in resumen:
@@ -520,11 +582,12 @@ def procesar_carpeta(
     log: logging.Logger,
     origen,
     dry_run: bool = False,
-) -> dict[str, int]:
+) -> tuple[dict[str, int], Agrupacion, dict[Path, int]]:
     """
     Procesa una única carpeta: elimina archivos auxiliares, valida tamaños,
-    agrupa, empaca y escribe resultados.
-    Devuelve un diccionario con las cifras de control.
+    agrupa y empaca. No escribe output.txt: ese listado se agrega al final
+    de la ejecución con los resultados de todas las carpetas.
+    Devuelve las cifras de control, la agrupación y el inventario de archivos.
     """
     log.info("Carpeta %s: iniciando procesamiento", carpeta.name)
 
@@ -543,8 +606,9 @@ def procesar_carpeta(
     validar_tamanos(archivos, cfg)
 
     # Escribir Total Origen-<fecha>.txt (orden ascendente por tamaño)
-    for archivo in sorted(archivos, key=archivos.get):
-        origen.write(f"{archivo}\n")
+    if origen is not None:
+        for archivo in sorted(archivos, key=archivos.get):
+            origen.write(f"{archivo}\n")
 
     # Agrupar y empacar
     agrupacion = agrupar_por_tamano(
@@ -568,9 +632,6 @@ def procesar_carpeta(
         dry_run=dry_run,
     )
 
-    # Escribir output.txt
-    escribir_output(agrupacion.grupos, archivos, cfg)
-
     # Cifras de control
     cifras = {
         "total_archivos": len(archivos),
@@ -582,7 +643,7 @@ def procesar_carpeta(
         carpeta.name,
         cifras,
     )
-    return cifras
+    return cifras, agrupacion, archivos
 
 
 if __name__ == "__main__":
