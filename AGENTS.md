@@ -60,6 +60,13 @@ The `.sh` scripts run under Git Bash and write output to `../shellScriptResults/
 ### `convertPdfToImages` default scale is `2.5`; QR validation spec uses `scale: 3`
 Low scale values (≤ 2) frequently miss QR codes. Use `scale: 3` or higher when adding new QR-reading code.
 
+### Git Bash (MSYS2) corrupts Ghostscript `/Name`-style parameters — use `MSYS2_ARG_CONV_EXCL`
+Running Ghostscript from Git Bash mangles arguments containing `/Name` values: `-dColorImageDownsampleType=/Bicubic` reaches gs as `-dColorImageDownsampleType=C:/Program Files/Git/Bicubic` (MSYS2 path conversion), so gs exits 1 with `Invalid value for option ...` and produces **no output file**. This silently breaks every pdfwrite call with `/Bicubic`, `/DCTEncode`, `/CCITTFaxEncode`, `/Remove`, etc. The fix, already in [`pdfs/split_4M_PDF_ghostscript_this.sh`](pdfs/split_4M_PDF_ghostscript_this.sh), prefixes each gs invocation with:
+```bash
+MSYS2_ARG_CONV_EXCL="*" MSYS_NO_PATHCONV=1 "$GS_CMD" ... 
+```
+Never pass these parameters bare from Git Bash. Related GS 10 gotchas in the same script: gs ≥ 9.50 enables `-dSAFER` by default, so the `pdfpagecount` PostScript fallback needs `--permit-file-read=<pdf>`; and `fd` respects `.gitignore` by default (this repo ignores `*.pdf`), so PDF discovery needs `fd -I`/`--no-ignore` or it only finds uppercase `.PDF` files.
+
 ### Compression only replaces the original if the compressed file is **smaller**
 If Ghostscript produces a larger file, the original is kept and the temp file is deleted — the test still passes. A compression failure (non-zero exit or missing tmp file) causes the test to fail.
 

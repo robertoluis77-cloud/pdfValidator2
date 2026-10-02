@@ -44,7 +44,7 @@ echo ""
 # -e pdf: filtra por extensión 'pdf'
 # --size +1M: filtra archivos con tamaño mayor a 1MB
 # . "$DIR": busca en el directorio especificado
-PDF_LIST=$($FD_CMD -e pdf --size +1M . "$DIR")
+PDF_LIST=$($FD_CMD -e pdf --size +1M -I . "$DIR")
 COUNT=$(echo "$PDF_LIST" | wc -l)
 
 if [ "$COUNT" -gt 0 ]; then
