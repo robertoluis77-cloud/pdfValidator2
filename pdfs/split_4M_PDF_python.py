@@ -7,6 +7,8 @@ part until the size threshold is reached.
 
 Naming: myPDF.pdf -> myPDF_1.pdf, myPDF_2.pdf, ... (same folder as the source).
 
+On full success the original file is deleted; on any failure it is kept.
+
 Usage:
     python split_4M_PDF_python.py [--dir <ruta>] [--max-mb <mb>]
 
@@ -32,7 +34,7 @@ except ImportError:
     PDF_LIB = "PyPDF2"
 
 BYTES_PER_MB = 1024 * 1024
-DEFAULT_DIR = "/c/githubProjects/playwrightProjects/pdfValidator/pdfs/Mayores 4 MBs"
+DEFAULT_DIR = "/c/githubProjects/playwrightProjects/pdfValidator/pdfs"
 DEFAULT_MAX_MB = 4
 MAX_BISECT_DEPTH = 10
 
@@ -125,12 +127,16 @@ def bisect_group(reader, page_indices, tmp_dir: Path, limit_bytes: int, log, dep
     return result
 
 
-def process_pdf(pdf_path: Path, limit_bytes: int, tmp_dir: Path, log) -> bool:
-    """Split one PDF into parts under the limit; return True on full success."""
+def process_pdf(pdf_path: Path, limit_bytes: int, tmp_dir: Path, log):
+    """Split one PDF into parts under the limit.
+
+    Returns the list of created part paths on success, or None on failure
+    (on failure the original file must be preserved).
+    """
     reader, reason = open_reader(pdf_path)
     if reader is None:
         log.error("FALLO '%s': %s", pdf_path.name, reason)
-        return False
+        return None
 
     try:
         total = len(reader.pages)
@@ -141,7 +147,7 @@ def process_pdf(pdf_path: Path, limit_bytes: int, tmp_dir: Path, log) -> bool:
             type(exc).__name__,
             exc,
         )
-        return False
+        return None
 
     base = pdf_path.stem
     out_dir = pdf_path.parent
@@ -168,7 +174,7 @@ def process_pdf(pdf_path: Path, limit_bytes: int, tmp_dir: Path, log) -> bool:
                 type(exc).__name__,
                 exc,
             )
-            return False
+            return None
 
     # Acumular paginas hasta alcanzar el limite (con un margen de seguridad del 2%)
     margin = int(limit_bytes * 0.02) + 1024
@@ -200,7 +206,7 @@ def process_pdf(pdf_path: Path, limit_bytes: int, tmp_dir: Path, log) -> bool:
                 type(exc).__name__,
                 exc,
             )
-            return False
+            return None
         if size > limit_bytes and len(group) > 1:
             log.warning(
                 "    El grupo %d (paginas %d-%d) midio %.2f MB (> limite); subdividiendo",
@@ -221,7 +227,7 @@ def process_pdf(pdf_path: Path, limit_bytes: int, tmp_dir: Path, log) -> bool:
             leaf_groups.append(group)
 
     # Escribir las partes finales con numeracion secuencial
-    ok = True
+    created = []
     for number, group in enumerate(leaf_groups, start=1):
         out_path = out_dir / f"{base}_{number}.pdf"
         try:
@@ -241,8 +247,13 @@ def process_pdf(pdf_path: Path, limit_bytes: int, tmp_dir: Path, log) -> bool:
                 type(exc).__name__,
                 exc,
             )
-            ok = False
-            continue
+            # Division incompleta: eliminar las partes ya creadas para no dejar duplicados
+            for part in created:
+                try:
+                    part.unlink()
+                except OSError:
+                    pass
+            return None
         log.info(
             "    CREADA: %s (paginas %d-%d, %.2f MB)",
             out_path.name,
@@ -250,7 +261,8 @@ def process_pdf(pdf_path: Path, limit_bytes: int, tmp_dir: Path, log) -> bool:
             group[-1] + 1,
             size / BYTES_PER_MB,
         )
-    return ok
+        created.append(out_path)
+    return created
 
 
 def main() -> int:
@@ -308,22 +320,56 @@ def main() -> int:
         return 0
 
     failures = 0
+    deleted = 0
     with tempfile.TemporaryDirectory(prefix="split_pdf_") as tmp:
         tmp_dir = Path(tmp)
         for pdf_path in big:
             try:
-                if not process_pdf(pdf_path, limit_bytes, tmp_dir, log):
-                    failures += 1
+                parts = process_pdf(pdf_path, limit_bytes, tmp_dir, log)
             except Exception as exc:
                 log.error(
-                    "FALLO inesperado en '%s': %s: %s",
+                    "FALLO inesperado en '%s': %s: %s; se conserva el original",
                     pdf_path.name,
                     type(exc).__name__,
                     exc,
                 )
                 failures += 1
+                continue
+            if parts is None:
+                log.info(
+                    "CONSERVADO: '%s' (la division fallo; el original no se elimina)",
+                    pdf_path.name,
+                )
+                failures += 1
+                continue
+            if not parts:
+                log.error(
+                    "FALLO '%s': la division no genero ninguna parte; se conserva el original",
+                    pdf_path.name,
+                )
+                failures += 1
+                continue
+            try:
+                valid = all(part.exists() and part.stat().st_size > 0 for part in parts)
+                if not valid:
+                    raise OSError("una de las partes generadas falta o esta vacia")
+                pdf_path.unlink()
+            except OSError as exc:
+                log.error(
+                    "FALLO '%s': no se pudo eliminar el original de forma segura (%s); se conserva",
+                    pdf_path.name,
+                    exc,
+                )
+                failures += 1
+                continue
+            deleted += 1
+            log.info(
+                "ELIMINADO: '%s' (reemplazado por %d parte(s))",
+                pdf_path.name,
+                len(parts),
+            )
 
-    log.info("Resumen: %d PDF(s) procesados, %d con fallo", len(big), failures)
+    log.info("Resumen: %d PDF(s) procesados, %d eliminados, %d con fallo", len(big), deleted, failures)
     log.info("Proceso finalizado.")
     return 1 if failures else 0
 
