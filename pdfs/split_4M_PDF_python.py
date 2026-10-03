@@ -8,6 +8,8 @@ part until the size threshold is reached.
 Naming: myPDF.pdf -> myPDF_1.pdf, myPDF_2.pdf, ... (same folder as the source).
 
 On full success the original file is deleted; on any failure it is kept.
+A PDF containing a single page that alone exceeds the limit is not split
+(abort, no parts created, original kept).
 
 Usage:
     python split_4M_PDF_python.py [--dir <ruta>] [--max-mb <mb>]
@@ -102,13 +104,17 @@ def write_pages(reader, page_indices, out_path: Path) -> int:
 
 
 def bisect_group(reader, page_indices, tmp_dir: Path, limit_bytes: int, log, depth=0):
-    """Split a page-index group in halves until each half fits the limit."""
+    """Split a page-index group in halves until each half fits the limit.
+
+    Returns the list of page-index groups, or None when a part cannot be
+    divided further and still exceeds the limit (the caller must abort).
+    """
     if depth >= MAX_BISECT_DEPTH or len(page_indices) == 1:
-        log.warning(
-            "        AVISO: la pagina %d sola mide mas que el limite; no se puede dividir mas",
+        log.error(
+            "        FALLO: la pagina %d sola mide mas que el limite; no se puede dividir mas",
             page_indices[0] + 1,
         )
-        return [page_indices]
+        return None
     mid = len(page_indices) // 2
     result = []
     for part in (page_indices[:mid], page_indices[mid:]):
@@ -121,7 +127,10 @@ def bisect_group(reader, page_indices, tmp_dir: Path, limit_bytes: int, log, dep
                 part[-1] + 1,
                 size / BYTES_PER_MB,
             )
-            result.extend(bisect_group(reader, part, tmp_dir, limit_bytes, log, depth + 1))
+            sub = bisect_group(reader, part, tmp_dir, limit_bytes, log, depth + 1)
+            if sub is None:
+                return None
+            result.extend(sub)
         else:
             result.append(part)
     return result
@@ -215,15 +224,20 @@ def process_pdf(pdf_path: Path, limit_bytes: int, tmp_dir: Path, log):
                 group[-1] + 1,
                 size / BYTES_PER_MB,
             )
-            leaf_groups.extend(bisect_group(reader, group, tmp_dir, limit_bytes, log))
+            sub = bisect_group(reader, group, tmp_dir, limit_bytes, log)
+            if sub is None:
+                return None
+            leaf_groups.extend(sub)
+        elif size > limit_bytes:
+            log.error(
+                "FALLO '%s': la pagina %d mide %.2f MB y excede el limite por si sola; "
+                "no se puede dividir mas, abortando sin crear partes",
+                pdf_path.name,
+                group[0] + 1,
+                size / BYTES_PER_MB,
+            )
+            return None
         else:
-            if size > limit_bytes:
-                log.warning(
-                    "    AVISO: la pagina %d mide %.2f MB y excede el limite por si sola; "
-                    "no se puede dividir mas",
-                    group[0] + 1,
-                    size / BYTES_PER_MB,
-                )
             leaf_groups.append(group)
 
     # Escribir las partes finales con numeracion secuencial
