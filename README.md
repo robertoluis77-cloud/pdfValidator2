@@ -112,7 +112,9 @@ choco install fd
 # o
 scoop install fd
 ```
+### 2.4 Verificar C:\tmp exist before to run it.
 
+Note: Make sure the C:\tmp folder exists on your system before running the script
 ---
 
 ## 3. Novedades y cambios recientes

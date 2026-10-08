@@ -99,7 +99,7 @@ test.describe('Compress PDFs with Ghostscript', () => {
 
             const dirName = path.dirname(input);
             const base = path.basename(input);
-            const tmp = path.join(dirName, `.tmp_compressed_${Date.now()}_${base}`);
+            const tmp = path.join('C:\\tmp', `.tmp_compressed_${Date.now()}_${base}`);
 
             // Select Ghostscript profile via env GS_PROFILE ('2'|'12'|'3'|'4', default '2')
             const profileKey = process.env.GS_PROFILE ?? '2';
@@ -194,7 +194,7 @@ test.describe('Compress PDFs with Ghostscript', () => {
             });
 
             // Assert no failure for this file
-            expect(failed, `PDF compression successfull. See attached 'gs-compress-log.txt'`).toBe(false);
+            expect(failed, `PDF compression verification. See attached 'gs-compress-log.txt'`).toBe(false);
         });
     }
 
