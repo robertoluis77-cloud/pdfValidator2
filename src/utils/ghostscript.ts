@@ -141,7 +141,7 @@ export const GS_PROFILES: Record<string, string[]> = {
         '-dDownsampleColorImages=true',
         '-dDownsampleGrayImages=true',
         '-dDownsampleMonoImages=true',
-        '-dColorImageResolution=200',//para q se vea mejor la primera pagina del "Internacional 2026 Canario.pdf"
+        '-dColorImageResolution=180',//para q se vea mejor la primera pagina del "Internacional 2026 Canario.pdf y las notas dentro de los diagramas pero no pasan los ACs ni los contratos pero se puede correr el python de split"
         '-dGrayImageResolution=300',
         '-dMonoImageResolution=300',
         '-dColorImageDownsampleType=/Bicubic',
@@ -163,7 +163,7 @@ export const GS_PROFILES: Record<string, string[]> = {
         '-dRemoveUnusedResources=true',
         '-dEmbedAllFonts=true',
         '-dCompressPages=true',
-    ],//Nos podemos ir con este para todos al principio y ya checar cuales quedan arriba de 4 MBs, los ACs y el de Internacional los reduce a menos de 4MBs
+    ],//Nos podemos ir con este para todos al principio y ya checar cuales quedan arriba de 4 MBs, los ACs y el de Internacional los reduce a menos de 4MBs. Este no sirvio para los diagramas
     '10': [
         '-sDEVICE=pdfwrite',
         '-dCompatibilityLevel=1.4',
