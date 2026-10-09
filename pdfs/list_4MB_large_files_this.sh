@@ -27,14 +27,14 @@ echo "========================================"
 echo ""
 
 # Buscar archivos recursivamente, filtrar los de 4MB o más y contar
-COUNT=$(find "$DIR" \( -type f -size +4M -o -size 4M \) 2>/dev/null | wc -l)
+COUNT=$(find "$DIR" \( -type f -size +4M \) 2>/dev/null | wc -l)
 
 # Mostrar los archivos encontrados (opcional, para ver cuáles son)
 # find . -type f \(-size +4M -o -size 4M \) -print0 | xargs -0 ls -alhS | tee Archivos4MBs.txt
 
 if [ "$COUNT" -gt 0 ]; then
     echo "📄 Archivos encontrados:"
-    find "$DIR" \( -type f -size +4M -o -size 4M \) -print0 2>/dev/null | \
+    find "$DIR" \( -type f -size +4M \) -print0 2>/dev/null | \
         xargs -0 ls -hS --color=never 2>/dev/null | \
         sed '/^total/d; s/^/   📁 /'
     echo ""

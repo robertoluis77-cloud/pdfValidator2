@@ -41,3 +41,4 @@ pdfs/pdfsComprimidos/solicitud_cartaporte_pimo_tr1716_guia_5923_41975_697579.csv
 pdfs/pdfsComprimidos/solicitud_cartaporte_pimo_tr1716_guia_5967_58108_132607.csv
 *.zip
 pdfs/__pycache__/split_4M_PDF_python.cpython-314.pyc
+*.xml
